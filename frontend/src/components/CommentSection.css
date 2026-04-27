@@ -1,0 +1,204 @@
+.comment-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.comment-header h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: 0.03em;
+}
+
+.btn-login, .btn-logout {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.25s ease;
+  font-family: var(--font-body);
+}
+
+.btn-login {
+  background: var(--accent-gold);
+  color: var(--bg-deep);
+}
+
+.btn-login:hover {
+  box-shadow: 0 0 16px var(--accent-gold-glow);
+}
+
+.btn-logout {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  border: 1px solid var(--border-light);
+}
+
+.btn-logout:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-light);
+}
+
+.login-form, .comment-form {
+  margin-bottom: 16px;
+}
+
+.login-form input, .comment-form textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  font-size: 0.875rem;
+  transition: all 0.25s ease;
+  font-family: var(--font-body);
+}
+
+.login-form input:focus, .comment-form textarea:focus {
+  outline: none;
+  border-color: var(--accent-gold-dim);
+}
+
+.login-form input::placeholder, .comment-form textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.comment-form textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.login-form button, .comment-form button {
+  padding: 10px 20px;
+  background: var(--accent-gold);
+  color: var(--bg-deep);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: all 0.25s ease;
+  font-family: var(--font-body);
+}
+
+.login-form button:hover, .comment-form button:hover {
+  box-shadow: 0 0 16px var(--accent-gold-glow);
+}
+
+.comment-form button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.comment-list {
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+/* 滚动条 */
+.comment-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.comment-list::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+.comment-list::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 3px;
+}
+
+.comment-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.comment-item {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.comment-item:last-child {
+  border-bottom: none;
+}
+
+.comment-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.agent-name {
+  font-family: var(--font-display);
+  font-weight: 500;
+  color: var(--accent-gold-light);
+  font-size: 0.875rem;
+}
+
+.comment-date {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.comment-content {
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.5;
+  font-size: 0.875rem;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-like {
+  background: none;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 5px;
+  transition: all 0.25s ease;
+  font-family: var(--font-mono);
+}
+
+.btn-like:hover {
+  border-color: var(--signal-bear-dim);
+  color: var(--signal-bear);
+}
+
+.btn-like.liked {
+  color: var(--signal-bear);
+  border-color: var(--signal-bear-dim);
+  background: rgba(255, 23, 68, 0.08);
+}
+
+.loading, .empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 30px;
+  font-size: 0.875rem;
+  font-style: italic;
+}

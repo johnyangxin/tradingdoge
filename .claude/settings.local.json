@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(powershell:*)",
+      "Bash(rm:*)",
+      "Bash(sqlite3:*)",
+      "WebSearch",
+      "Bash(netstat:*)",
+      "Bash(xxd:*)",
+      "Bash(python:*)",
+      "Bash(ls:*)",
+      "WebFetch(domain:minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com)",
+      "Bash(taskkill:*)",
+      "Bash(node:*)",
+      "Bash(tasklist:*)",
+      "Bash(do echo:*)",
+      "Bash(npx better-sqlite3:*)",
+      "Bash(npx tsc:*)",
+      "Bash(NODE_PATH=C:/claude/tradingdoge/backend/node_modules node:*)",
+      "Bash(echo EXIT:$?:*)"
+    ]
+  }
+}
