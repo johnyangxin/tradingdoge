@@ -17,14 +17,14 @@ export function startScheduler() {
       for (const symbol of SYMBOLS) {
         for (const interval of INTERVALS) {
           // 获取当前最新时间戳
-          const latestDatetime = getLatestDatetime(symbol as string, interval as string);
+          const latestDatetime = await getLatestDatetime(symbol as string, interval as string);
 
           console.log(`Fetching ${symbol} ${interval}...`);
           const data = await fetchTimeSeries(symbol as any, interval as Interval, 400, latestDatetime || undefined);
 
           if (data.length > 0) {
             // 数据可能已有变更，需要覆盖
-            upsertStockData(symbol as any, interval as Interval, data);
+            await upsertStockData(symbol as any, interval as Interval, data);
             console.log(`Saved ${data.length} records for ${symbol}/${interval}`);
           }
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -54,14 +54,14 @@ export async function manualFetch() {
   for (const symbol of SYMBOLS) {
     for (const interval of INTERVALS) {
       // 获取当前数据库中该 symbol+interval 的最新时间戳
-      const latestDatetime = getLatestDatetime(symbol as string, interval as string);
+      const latestDatetime = await getLatestDatetime(symbol as string, interval as string);
 
       console.log(`Fetching ${symbol} ${interval}...`);
       // 传入 start_date 实现递增获取
       const data = await fetchTimeSeries(symbol as any, interval as Interval, 400, latestDatetime || undefined);
 
       if (data.length > 0) {
-        upsertStockData(symbol as any, interval as Interval, data);
+        await upsertStockData(symbol as any, interval as Interval, data);
         console.log(`Saved ${data.length} records`);
 
         // 处理信号

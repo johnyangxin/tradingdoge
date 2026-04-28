@@ -1,0 +1,11 @@
+name = "tradingdoge-api"
+compatibility_date = "2024-01-01"
+main = "src/index.ts"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tradingdoge-db"
+database_id = "YOUR_DATABASE_ID_HERE"
+
+[env.production]
+d1_databases = [{ binding = "DB", database_name = "tradingdoge-db", database_id = "YOUR_DATABASE_ID_HERE" }]

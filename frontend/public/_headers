@@ -1,0 +1,16 @@
+/*
+ * Cloudflare Pages Headers Configuration
+ * Place this file in the `public` folder or configure in Cloudflare Pages
+ */
+
+/* API Proxy - if using Cloudflare Pages Functions to proxy to Workers
+/api/*
+  X-Workers-Base-Url: https://your-workers-subdomain.workers.dev
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, X-API-Key
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin

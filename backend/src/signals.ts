@@ -69,7 +69,7 @@ export function detectCrossovers(
 
 // 处理股票数据并生成信号
 export async function processStockData(symbol: string, interval: string): Promise<void> {
-  const data = getStockData(symbol, interval, 400);
+  const data = await getStockData(symbol, interval, 400);
 
   if (data.length < 90) {
     console.log(`Not enough data for ${symbol}/${interval}: ${data.length} records`);
@@ -82,7 +82,7 @@ export async function processStockData(symbol: string, interval: string): Promis
     console.log(`Found ${signals.length} new signals for ${symbol}/${interval}`);
 
     for (const signal of signals) {
-      insertSignal(signal);
+      await insertSignal(signal);
       console.log(`  ${signal.datetime} ${signal.signal_type} at ${signal.price}`);
     }
 
@@ -105,8 +105,8 @@ export interface CandleWithMA {
   ma90: number | null;
 }
 
-export function getCandlesWithMA(symbol: string, interval: string, limit?: number): CandleWithMA[] {
-  const data = getStockData(symbol, interval, limit);
+export async function getCandlesWithMA(symbol: string, interval: string, limit?: number): Promise<CandleWithMA[]> {
+  const data = await getStockData(symbol, interval, limit);
   const ma25 = calculateSMA(data, 25);
   const ma90 = calculateSMA(data, 90);
 
@@ -129,7 +129,7 @@ export async function checkAndNotifyAllBSignal(symbol: string): Promise<void> {
 
   // 获取每个时间周期的最新信号
   for (const interval of intervals) {
-    const signals = getSignals(symbol, 3); // 最近3天
+    const signals = await getSignals(symbol, 3); // 最近3天
     const filtered = signals.filter(s => s.interval === interval);
     latestSignals[interval] = filtered.length > 0 ? filtered[0].signal_type : null;
   }
@@ -145,12 +145,12 @@ export async function checkAndNotifyAllBSignal(symbol: string): Promise<void> {
 
   if (allB) {
     // 获取当前价格
-    const data = getStockData(symbol, '1day', 1);
+    const data = await getStockData(symbol, '1day', 1);
     const price = data.length > 0 ? data[data.length - 1].close : 0;
     console.log(`All B signals detected for ${symbol}, sending notification...`);
     await notifyAllBSignal(symbol, 'B', price);
   } else if (allS) {
-    const data = getStockData(symbol, '1day', 1);
+    const data = await getStockData(symbol, '1day', 1);
     const price = data.length > 0 ? data[data.length - 1].close : 0;
     console.log(`All S signals detected for ${symbol}, sending notification...`);
     await notifyAllBSignal(symbol, 'S', price);

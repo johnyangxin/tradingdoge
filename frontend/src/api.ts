@@ -26,7 +26,9 @@ export interface Signal {
 export const INTERVALS = ['1h', '2h', '4h', '1day', '1week', '1month'] as const;
 export type Interval = typeof INTERVALS[number];
 
-export const API_BASE = '/api';
+// Use environment variable for API base, default to /api for local development
+// For Cloudflare Pages, set PUBLIC_API_URL to your Workers URL
+export const API_BASE = import.meta.env.PUBLIC_API_URL || '/api';
 
 export async function fetchStocks(): Promise<Stock[]> {
   const res = await fetch(`${API_BASE}/stocks`);
