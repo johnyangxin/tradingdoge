@@ -8,8 +8,8 @@
     "build": "tsc -p tsconfig.workers.json",
     "build:local": "tsc",
     "start": "node dist/index.js",
-    "dev": "node --loader ts-node/esm src/index.ts",
-    "fetch": "node --loader ts-node/esm scripts/fetch-data.ts",
+    "dev": "tsx src/index.ts",
+    "fetch": "tsx scripts/fetch-data.ts",
     "deploy": "wrangler deploy",
     "dev:workers": "wrangler dev"
   },

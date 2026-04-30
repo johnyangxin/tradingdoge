@@ -5,6 +5,7 @@ build/
 .env.local
 .env.*.local
 *.db
+*.db*
 *.db-journal
 *.log
 npm-debug.log*

@@ -21,7 +21,12 @@
       "Bash(npx better-sqlite3:*)",
       "Bash(npx tsc:*)",
       "Bash(NODE_PATH=C:/claude/tradingdoge/backend/node_modules node:*)",
-      "Bash(echo EXIT:$?:*)"
+      "Bash(echo EXIT:$?:*)",
+      "Bash(npm search:*)",
+      "Bash(npx tsx:*)",
+      "Bash(gh auth:*)",
+      "Bash(netsh winhttp:*)",
+      "Bash(git:*)"
     ]
   }
 }
