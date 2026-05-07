@@ -12,9 +12,8 @@ export default defineConfig({
       }
     }
   },
-  base: '/',
-  // 使用相对路径，Pages 会通过 _redirects 转发
+  // Define environment variables for Cloudflare Pages
   define: {
-    'import.meta.env.PUBLIC_API_URL': JSON.stringify('')
+    'import.meta.env.PUBLIC_API_URL': JSON.stringify(process.env.PUBLIC_API_URL || '')
   }
 });

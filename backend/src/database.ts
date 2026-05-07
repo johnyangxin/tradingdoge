@@ -1,9 +1,11 @@
 import { Signal, OHLCV, Interval, Agent, Comment, SYMBOLS } from './types';
+import Database from 'better-sqlite3';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-// Check if we're in Cloudflare Workers environment
-function isCloudflare(): boolean {
-  return typeof (globalThis as any).env !== 'undefined' && (globalThis as any).env?.DB !== undefined;
-}
+// ESM equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Type for better-sqlite3 database
 export interface SqlJsDatabase {
@@ -11,27 +13,23 @@ export interface SqlJsDatabase {
   prepare(sql: string): any;
 }
 
-// Local database instance - only used in local development
-let localDb: any = null;
-let __dirname = '';
+// Local database instance
+let localDb: Database.Database | null = null;
 
-// Initialize local database (for local dev only)
-async function initLocalDatabase(): Promise<any> {
-  if (isCloudflare()) return null; // Skip in Cloudflare
+// Initialize local database
+async function initLocalDatabase(): Promise<Database.Database> {
+  if (localDb) return localDb;
 
-  // Dynamic imports for local development
-  const { fileURLToPath } = await import('url');
-  const { dirname, join } = await import('path');
-
-  // ESM equivalent of __dirname
-  const __filename = fileURLToPath(import.meta.url);
-  __dirname = dirname(__filename);
-
-  const Database = (await import('better-sqlite3')).default;
   const dbPath = join(__dirname, '..', 'tradingdoge.db');
+
   localDb = new Database(dbPath);
-  localDb.pragma('journal_mode = WAL');
-  initTables(localDb);
+
+  // Enable WAL mode for better performance
+  localDb!.pragma('journal_mode = WAL');
+
+  // Initialize tables
+  initTables(localDb as any);
+
   return localDb;
 }
 
@@ -108,13 +106,15 @@ interface DbWrapper {
 // Local database wrapper for better-sqlite3
 class LocalDbWrapper implements DbWrapper {
   isLocal = true;
-  private db: any;
+  private db: Database.Database;
 
-  constructor(db: any) {
+  constructor(db: Database.Database) {
     this.db = db;
   }
 
-  async init(): Promise<void> {}
+  async init(): Promise<void> {
+    // Already initialized in constructor
+  }
 
   async run(sql: string, params: any[] = []): Promise<{ lastRowId?: number; changes?: number }> {
     const stmt = this.db.prepare(sql);
@@ -133,87 +133,6 @@ class LocalDbWrapper implements DbWrapper {
   }
 }
 
-// Cloudflare D1 wrapper
-class D1DbWrapper implements DbWrapper {
-  isLocal = false;
-  private db: any;
-
-  constructor(db: any) {
-    this.db = db;
-  }
-
-  async init(): Promise<void> {
-    // Create tables if not exist
-    await this.db.exec(`
-      CREATE TABLE IF NOT EXISTS stock_data (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        symbol TEXT NOT NULL,
-        interval TEXT NOT NULL,
-        datetime TEXT NOT NULL,
-        open REAL NOT NULL,
-        high REAL NOT NULL,
-        low REAL NOT NULL,
-        close REAL NOT NULL,
-        volume REAL NOT NULL,
-        UNIQUE(symbol, interval, datetime)
-      );
-
-      CREATE TABLE IF NOT EXISTS signals (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        symbol TEXT NOT NULL,
-        interval TEXT NOT NULL,
-        signal_type TEXT NOT NULL,
-        datetime TEXT NOT NULL,
-        price REAL NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS agents (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        api_key TEXT UNIQUE NOT NULL,
-        notify_enabled INTEGER DEFAULT 0,
-        notify_type TEXT DEFAULT 'none',
-        webhook_url TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS comments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        agent_id INTEGER NOT NULL,
-        symbol TEXT NOT NULL,
-        content TEXT NOT NULL,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (agent_id) REFERENCES agents(id)
-      );
-
-      CREATE TABLE IF NOT EXISTS comment_likes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        comment_id INTEGER NOT NULL,
-        agent_id INTEGER NOT NULL,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (comment_id) REFERENCES comments(id),
-        FOREIGN KEY (agent_id) REFERENCES agents(id),
-        UNIQUE(comment_id, agent_id)
-      );
-    `);
-  }
-
-  async run(sql: string, params: any[] = []): Promise<{ lastRowId?: number; changes?: number }> {
-    const result = await this.db.prepare(sql).bind(...params).run();
-    return { lastRowId: result.meta?.last_row_id, changes: result.meta?.changes };
-  }
-
-  async all(sql: string, params: any[] = []): Promise<any[]> {
-    const result = await this.db.prepare(sql).bind(...params).all();
-    return result || [];
-  }
-
-  async get(sql: string, params: any[] = []): Promise<any | undefined> {
-    const result = await this.db.prepare(sql).bind(...params).first();
-    return result;
-  }
-}
-
 // Global database wrapper
 let dbWrapper: DbWrapper | null = null;
 let dbInitialized = false;
@@ -222,17 +141,10 @@ let dbInitialized = false;
 export async function initDatabase(): Promise<void> {
   if (dbInitialized) return;
 
-  // Try to use D1 in Cloudflare, otherwise use local SQLite
-  if (isCloudflare()) {
-    const d1Db = (globalThis as any).env.DB;
-    dbWrapper = new D1DbWrapper(d1Db);
-  } else {
-    // Local development - use better-sqlite3
-    const localDbInstance = await initLocalDatabase();
-    dbWrapper = new LocalDbWrapper(localDbInstance);
-  }
+  // Local environment - use better-sqlite3
+  const localDbInstance = await initLocalDatabase();
+  dbWrapper = new LocalDbWrapper(localDbInstance);
 
-  await dbWrapper.init();
   dbInitialized = true;
 }
 
@@ -260,6 +172,8 @@ export async function upsertStockData(symbol: string, interval: string, data: OH
       [symbol, interval, item.datetime, item.open, item.high, item.low, item.close, item.volume]
     );
   }
+
+  // Save is automatic with better-sqlite3
 }
 
 // Get stock data
@@ -273,6 +187,7 @@ export async function getStockData(symbol: string, interval: string, limit?: num
   }
 
   const data = await dbWrapper.all(query, [symbol, interval]);
+  // Reverse for chronological order
   return data.reverse();
 }
 
@@ -298,6 +213,10 @@ export async function insertSignal(signal: Omit<Signal, 'id'>): Promise<void> {
     'INSERT INTO signals (symbol, interval, signal_type, datetime, price) VALUES (?, ?, ?, ?, ?)',
     [signal.symbol, signal.interval, signal.signal_type, signal.datetime, signal.price]
   );
+
+  if (false) { // Removed: 
+    saveLocalDatabase();
+  }
 }
 
 // Get signals
@@ -334,15 +253,19 @@ export async function clearAllSignals(): Promise<void> {
   if (!dbWrapper) return;
 
   await dbWrapper.run('DELETE FROM signals');
+
+  if (false) { // Removed: 
+    saveLocalDatabase();
+  }
 }
 
 // Get latest signals summary
-export async function getLatestSignals(): Promise<any> {
+export async function getLatestSignals(): Promise<Record<string, Record<string, { signal_type: string; datetime: string }>>> {
   await initDatabase();
   if (!dbWrapper) return {};
 
   const intervals = ['1h', '2h', '4h', '1day'];
-  const result: any = {};
+  const result: Record<string, Record<string, { signal_type: string; datetime: string }>> = {};
 
   for (const symbol of SYMBOLS) {
     result[symbol] = {};
@@ -371,6 +294,10 @@ export async function registerAgent(name: string, apiKey: string): Promise<Agent
     'INSERT INTO agents (name, api_key) VALUES (?, ?)',
     [name, apiKey]
   );
+
+  if (false) { // Removed: 
+    saveLocalDatabase();
+  }
 
   return {
     id: result.lastRowId as number,
@@ -414,6 +341,10 @@ export async function updateAgentNotifyConfig(id: number, notifyEnabled: number,
     'UPDATE agents SET notify_enabled = ?, notify_type = ?, webhook_url = ? WHERE id = ?',
     [notifyEnabled, notifyType, webhookUrl, id]
   );
+
+  if (false) { // Removed: 
+    saveLocalDatabase();
+  }
 }
 
 // ============ Comment Functions ============
@@ -426,6 +357,10 @@ export async function insertComment(agentId: number, symbol: string, content: st
     'INSERT INTO comments (agent_id, symbol, content) VALUES (?, ?, ?)',
     [agentId, symbol, content]
   );
+
+  if (false) { // Removed: 
+    saveLocalDatabase();
+  }
 
   return {
     id: result.lastRowId as number,
@@ -469,6 +404,10 @@ export async function toggleCommentLike(commentId: number, agentId: number): Pro
     await dbWrapper.run('DELETE FROM comment_likes WHERE comment_id = ? AND agent_id = ?', [commentId, agentId]);
   } else {
     await dbWrapper.run('INSERT INTO comment_likes (comment_id, agent_id) VALUES (?, ?)', [commentId, agentId]);
+  }
+
+  if (false) { // Removed: 
+    saveLocalDatabase();
   }
 
   return !existing;
