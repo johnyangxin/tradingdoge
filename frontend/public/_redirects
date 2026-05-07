@@ -1,4 +1,6 @@
 # Cloudflare Pages redirects
 # For SPA routing
-
 /*    /index.html   200
+
+# Proxy API requests to Cloudflare Workers
+/api/*  https://api.tradingdoge.com/api/:path  200

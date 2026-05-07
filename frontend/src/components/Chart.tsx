@@ -1,16 +1,17 @@
 import React from 'react';
+import { CandlestickData, LineData, Time } from 'lightweight-charts';
 
 interface ChartProps {
   data: Array<{
-    time: number;
+    time: Time;
     open: number;
     high: number;
     low: number;
     close: number;
     value?: number;
   }>;
-  ma25: Array<{ time: number; value: number }>;
-  ma90: Array<{ time: number; value: number }>;
+  ma25: LineData<Time>[];
+  ma90: LineData<Time>[];
 }
 
 export const StockChart: React.FC<ChartProps> = ({ data, ma25, ma90 }) => {
@@ -21,7 +22,8 @@ export const StockChart: React.FC<ChartProps> = ({ data, ma25, ma90 }) => {
   const line90Ref = React.useRef<any>(null);
 
   React.useEffect(() => {
-    if (!containerRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
 
     import('lightweight-charts').then((charts) => {
       const { createChart, ColorType } = charts;
@@ -29,8 +31,6 @@ export const StockChart: React.FC<ChartProps> = ({ data, ma25, ma90 }) => {
       if (chartRef.current) {
         chartRef.current.remove();
       }
-
-      const container = containerRef.current;
 
       const chart = createChart(container, {
         layout: {
@@ -83,9 +83,9 @@ export const StockChart: React.FC<ChartProps> = ({ data, ma25, ma90 }) => {
       line90Ref.current = line90;
 
       if (data.length > 0) {
-        candleSeries.setData(data);
-        line25.setData(ma25);
-        line90.setData(ma90);
+        candleSeries.setData(data as CandlestickData<Time>[]);
+        line25.setData(ma25 as LineData<Time>[]);
+        line90.setData(ma90 as LineData<Time>[]);
         chart.timeScale().fitContent();
       }
 
@@ -109,9 +109,9 @@ export const StockChart: React.FC<ChartProps> = ({ data, ma25, ma90 }) => {
 
   React.useEffect(() => {
     if (seriesRef.current && data.length > 0) {
-      seriesRef.current.setData(data);
-      line25Ref.current?.setData(ma25);
-      line90Ref.current?.setData(ma90);
+      seriesRef.current.setData(data as CandlestickData<Time>[]);
+      line25Ref.current?.setData(ma25 as LineData<Time>[]);
+      line90Ref.current?.setData(ma90 as LineData<Time>[]);
       chartRef.current?.timeScale().fitContent();
     }
   }, [data, ma25, ma90]);

@@ -26,7 +26,21 @@
       "Bash(npx tsx:*)",
       "Bash(gh auth:*)",
       "Bash(netsh winhttp:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(wrangler:*)",
+      "Bash(npx wrangler:*)",
+      "Bash(winget install:*)",
+      "Bash(cmd:*)",
+      "Bash(C:/\"Program Files\"/nodejs/node.exe:*)",
+      "Bash(C:/\"Program Files\"/nodejs/npm.cmd install:*)",
+      "Bash(C:/\"Program Files\"/nodejs/node_modules/.bin/wrangler.cmd login:*)",
+      "Bash(C:/\"Program Files\"/nodejs/npx.cmd wrangler:*)",
+      "Bash(npm rebuild:*)",
+      "Bash(gh repo:*)",
+      "Bash(vercel login:*)",
+      "Bash(vercel:*)",
+      "WebFetch(domain:tradingdoge.com)",
+      "Bash(nslookup:*)"
     ]
   }
 }

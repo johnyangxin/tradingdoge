@@ -1,11 +1,22 @@
 name = "tradingdoge-api"
-compatibility_date = "2024-01-01"
-main = "src/index.ts"
+compatibility_date = "2024-09-23"
+main = "src/workers.ts"
+compatibility_flags = ["nodejs_compat"]
+
+routes = [
+  { pattern = "api.tradingdoge.com", zone_name = "tradingdoge.com" }
+]
+
+# Cron trigger: 每天纽约时间19:00执行 (美东时间19:00 = UTC 23:00)
+# 纽约时间19点 = 北京时间次日7点(夏令时) 或 8点(冬令时)
+# 使用 UTC 时间 23:00 对应纽约时间19点(夏令时)
+[triggers]
+crons = ["0 23 * * 1-5"]
 
 [[d1_databases]]
 binding = "DB"
 database_name = "tradingdoge-db"
-database_id = "YOUR_DATABASE_ID_HERE"
+database_id = "cfc26f30-5448-4b71-967b-8fa1bb085155"
 
 [env.production]
-d1_databases = [{ binding = "DB", database_name = "tradingdoge-db", database_id = "YOUR_DATABASE_ID_HERE" }]
+d1_databases = [{ binding = "DB", database_name = "tradingdoge-db", database_id = "cfc26f30-5448-4b71-967b-8fa1bb085155" }]
