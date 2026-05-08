@@ -135,6 +135,7 @@ async function doManualFetch(symbolParam?: string | null, intervalParam?: string
   const symbolsToFetch = symbolParam ? [symbolParam] : SYMBOLS;
   const intervalsToFetch = intervalParam ? [intervalParam] : INTERVALS;
 
+  // Process one symbol+interval at a time to avoid CPU limit
   for (const symbol of symbolsToFetch) {
     for (const interval of intervalsToFetch) {
       const latestDatetime = await getLatestDatetime(symbol as string, interval as string);
@@ -151,7 +152,8 @@ async function doManualFetch(symbolParam?: string | null, intervalParam?: string
         console.log(`No new data for ${symbol} ${interval}`);
       }
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Small delay between requests
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
 }
