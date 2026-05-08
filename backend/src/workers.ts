@@ -135,13 +135,18 @@ async function doManualFetch(symbolParam?: string | null, intervalParam?: string
   const symbolsToFetch = symbolParam ? [symbolParam] : SYMBOLS;
   const intervalsToFetch = intervalParam ? [intervalParam] : INTERVALS;
 
+  // Calculate 7 days ago for scheduled fetch
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const startDate = sevenDaysAgo.toISOString().split('T')[0];
+
   // Process one symbol+interval at a time to avoid CPU limit
   for (const symbol of symbolsToFetch) {
     for (const interval of intervalsToFetch) {
-      const latestDatetime = await getLatestDatetime(symbol as string, interval as string);
-
-      console.log(`Fetching ${symbol} ${interval}...`);
-      const data = await fetchTimeSeries(symbol as any, interval as Interval, 400, latestDatetime || undefined);
+      console.log(`Fetching ${symbol} ${interval} since ${startDate}...`);
+      // Fetch last 7 days of data for scheduled job
+      const data = symbolParam ? await fetchTimeSeries(symbol as any, interval as Interval, 400, undefined)
+        : await fetchTimeSeries(symbol as any, interval as Interval, 400, startDate);
 
       if (data.length > 0) {
         await upsertStockData(symbol as any, interval as Interval, data);
