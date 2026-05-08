@@ -40,20 +40,6 @@ router.get('/stock/:symbol', async (req: Request, res: Response) => {
   res.json({ symbol, interval, data });
 });
 
-// Get B/S signals
-router.get('/signals/:symbol', async (req: Request, res: Response) => {
-  let symbol = decodeURIComponent(req.params.symbol);
-  symbol = symbol.replace('BTC-USD', 'BTC/USD');
-  const days = parseInt(req.query.days as string) || 30;
-
-  if (!SYMBOLS.includes(symbol as any)) {
-    return res.status(400).json({ error: 'Invalid symbol' });
-  }
-
-  const signals = await getSignals(symbol, days);
-  res.json({ symbol, days, signals });
-});
-
 // Get daily signals summary
 router.get('/signals-daily/:symbol', async (req: Request, res: Response) => {
   let symbol = decodeURIComponent(req.params.symbol);
@@ -88,6 +74,20 @@ router.get('/signals-daily/:symbol', async (req: Request, res: Response) => {
     .map(([date, sigs]) => ({ date, ...sigs }));
 
   res.json({ symbol, days, data: result });
+});
+
+// Get B/S signals
+router.get('/signals/:symbol', async (req: Request, res: Response) => {
+  let symbol = decodeURIComponent(req.params.symbol);
+  symbol = symbol.replace('BTC-USD', 'BTC/USD');
+  const days = parseInt(req.query.days as string) || 30;
+
+  if (!SYMBOLS.includes(symbol as any)) {
+    return res.status(400).json({ error: 'Invalid symbol' });
+  }
+
+  const signals = await getSignals(symbol, days);
+  res.json({ symbol, days, signals });
 });
 
 // Manually trigger data fetch
