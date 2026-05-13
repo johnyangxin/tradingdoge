@@ -1,0 +1,21 @@
+{
+  "apps": [
+    {
+      "name": "tradingdoge-backend",
+      "script": "backend/src/index.ts",
+      "cwd": "/var/www/tradingdoge",
+      "interpreter": "tsx",
+      "env": {
+        "NODE_ENV": "production",
+        "PORT": 3004
+      },
+      "exec_mode": "fork",
+      "instances": 1,
+      "autorestart": true,
+      "watch": false,
+      "max_memory_restart": "500M",
+      "log_date_format": "YYYY-MM-DD HH:mm:ss Z",
+      "merge_logs": true
+    }
+  ]
+}
