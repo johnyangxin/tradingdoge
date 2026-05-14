@@ -20,28 +20,22 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
           script: |
             cd /var/www/tradingdoge
-            git pull origin main
+            sudo -u deploy git pull origin main
 
-            # Install build tools for native modules
-            sudo apt-get update -qq
-            sudo apt-get install -y python3 make g++
-
-            # Install backend dependencies (need devDeps for better-sqlite3 compilation)
-            cd backend
-            npm install
-
-            # Build TypeScript workers
-            npm run build
+            # Install backend dependencies
+            cd /var/www/tradingdoge/backend
+            sudo -u deploy npm install
 
             # Build frontend
-            cd ../frontend
-            npm install
-            npm run build
+            cd /var/www/tradingdoge/frontend
+            sudo -u deploy npm install
+            sudo -u deploy npm run build
 
             # Restart services
-            pm2 restart all || pm2 start /var/www/tradingdoge/deploy/config/pm2.json
+            sudo pm2 restart all
 
             # Show status
-            pm2 status
+            sudo pm2 status
