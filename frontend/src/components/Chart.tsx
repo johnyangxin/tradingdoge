@@ -1,16 +1,16 @@
 import React from 'react';
+import type { UTCTimestamp } from 'lightweight-charts';
 
 interface ChartProps {
   data: Array<{
-    time: number;
+    time: UTCTimestamp;
     open: number;
     high: number;
     low: number;
     close: number;
-    value?: number;
   }>;
-  ma25: Array<{ time: number; value: number }>;
-  ma90: Array<{ time: number; value: number }>;
+  ma25: Array<{ time: UTCTimestamp; value: number }>;
+  ma90: Array<{ time: UTCTimestamp; value: number }>;
 }
 
 export const StockChart: React.FC<ChartProps> = ({ data, ma25, ma90 }) => {
@@ -31,6 +31,7 @@ export const StockChart: React.FC<ChartProps> = ({ data, ma25, ma90 }) => {
       }
 
       const container = containerRef.current;
+      if (!container) return;
 
       const chart = createChart(container, {
         layout: {
