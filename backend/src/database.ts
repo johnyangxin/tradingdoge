@@ -346,6 +346,17 @@ export async function getLatestDatetime(symbol: string, interval: string): Promi
   return result ? result.datetime : null;
 }
 
+// Get all dates for a symbol+interval
+export async function getAllDates(symbol: string, interval: string): Promise<{ datetime: string }[]> {
+  await initDatabase();
+  if (!dbWrapper) return [];
+
+  return await dbWrapper.all(
+    'SELECT DISTINCT datetime FROM stock_data WHERE symbol = ? AND interval = ? ORDER BY datetime',
+    [symbol, interval]
+  );
+}
+
 // Insert signal
 export async function insertSignal(signal: Omit<Signal, 'id'>): Promise<void> {
   await initDatabase();

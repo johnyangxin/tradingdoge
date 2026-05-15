@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import { SYMBOLS, Interval } from './types';
 import { getStockData, getSignals, initDatabase, clearAllSignals, registerAgent, getAgentByApiKey, getAgentById, getAgentList, updateAgentNotifyConfig, insertComment, getCommentsBySymbol, getCommentsByAgent, toggleCommentLike, getCommentLikeCount, getCommentLikeStatus, getLatestSignals } from './database';
 import { getCandlesWithMA, CandleWithMA } from './signals';
-import { manualFetch } from './scheduler';
+import { manualFetch, validateAndFetchIncomplete } from './scheduler';
 import { notifyNewComment } from './notifier';
 import crypto from 'crypto';
 
@@ -105,6 +105,30 @@ router.post('/reset-signals', async (_req: Request, res: Response) => {
   await clearAllSignals();
   await manualFetch();
   res.json({ success: true, message: 'Signals cleared and regenerated' });
+});
+
+// Validate and fetch incomplete data
+router.post('/validate', async (_req: Request, res: Response) => {
+  try {
+    const results = await validateAndFetchIncomplete();
+    const incomplete = results.filter(r => r.status !== 'complete');
+    res.json({
+      success: true,
+      total: results.length,
+      complete: results.filter(r => r.status === 'complete').length,
+      updated: incomplete.length,
+      results
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get latest datetime for a symbol
+router.get('/latest/:symbol', async (req: Request, res: Response) => {
+  const symbol = decodeURIComponent(req.params.symbol);
+  const latestDatetime = await getLatestDatetime(symbol, '1day');
+  res.json({ symbol, latest_datetime: latestDatetime });
 });
 
 // Get signals summary
