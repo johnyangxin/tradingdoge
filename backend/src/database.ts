@@ -1,30 +1,45 @@
 import { Signal, OHLCV, Interval, Agent, Comment, SYMBOLS } from './types';
-import Database from 'better-sqlite3';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { createClient } from '@libsql/client';
 
-// ESM equivalent of __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Turso configuration
+const TURSO_URL = process.env.TURSO_DATABASE_URL || 'libsql://tradingdoge-johnyang.aws-us-east-1.turso.io';
+const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN;
 
-// Type for better-sqlite3 database
+// Type for global env in Workers
+interface Env {
+  DB?: any;  // D1Database;
+  TWELVEDATA_API_KEY?: string;
+}
+
+// Get D1 database from env
+function getD1Db(): any | null {
+  const env = (globalThis as any).env;
+  return env?.DB || null;
+}
+
+// Type for D1 database wrapper
 export interface SqlJsDatabase {
   exec(sql: string): void;
   prepare(sql: string): any;
 }
 
 // Local database instance
-let localDb: Database.Database | null = null;
+let localDb: any = null;
 
-// Initialize local database
-async function initLocalDatabase(): Promise<Database.Database> {
+// Initialize local database (Node.js only)
+async function initLocalDatabase(): Promise<any> {
   if (localDb) return localDb;
+
+  const Database = (await import('better-sqlite3')).default;
+  const { fileURLToPath } = await import('url');
+  const { dirname, join } = await import('path');
+
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
 
   const dbPath = join(__dirname, '..', 'tradingdoge.db');
 
   localDb = new Database(dbPath);
-
-  // Enable WAL mode for better performance
   localDb!.pragma('journal_mode = WAL');
 
   // Initialize tables
@@ -106,9 +121,9 @@ interface DbWrapper {
 // Local database wrapper for better-sqlite3
 class LocalDbWrapper implements DbWrapper {
   isLocal = true;
-  private db: Database.Database;
+  private db: any;
 
-  constructor(db: Database.Database) {
+  constructor(db: any) {
     this.db = db;
   }
 
@@ -133,6 +148,117 @@ class LocalDbWrapper implements DbWrapper {
   }
 }
 
+// D1 database wrapper for Cloudflare Workers
+class D1DbWrapper implements DbWrapper {
+  isLocal = false;
+  private db: any;
+
+  constructor(db: any) {
+    this.db = db;
+  }
+
+  async init(): Promise<void> {
+    // D1 tables are created via wrangler, no need to init here
+  }
+
+  async run(sql: string, params: any[] = []): Promise<{ lastRowId?: number; changes?: number }> {
+    const result = await this.db.prepare(sql).bind(...params).run();
+    return { lastRowId: result.meta?.last_row_id, changes: result.meta?.changes };
+  }
+
+  async all(sql: string, params: any[] = []): Promise<any[]> {
+    const result = await this.db.prepare(sql).bind(...params).all();
+    return result.results || [];
+  }
+
+  async get(sql: string, params: any[] = []): Promise<any | undefined> {
+    const result = await this.db.prepare(sql).bind(...params).first();
+    return result || undefined;
+  }
+}
+
+// Turso database wrapper
+class TursoDbWrapper implements DbWrapper {
+  isLocal = false;
+  private client: any;
+
+  constructor(client: any) {
+    this.client = client;
+  }
+
+  async init(): Promise<void> {
+    // Create tables if not exists
+    const createTableSql = `
+      CREATE TABLE IF NOT EXISTS stock_data (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        symbol TEXT NOT NULL,
+        interval TEXT NOT NULL,
+        datetime TEXT NOT NULL,
+        open REAL NOT NULL,
+        high REAL NOT NULL,
+        low REAL NOT NULL,
+        close REAL NOT NULL,
+        volume REAL NOT NULL,
+        UNIQUE(symbol, interval, datetime)
+      );
+
+      CREATE TABLE IF NOT EXISTS signals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        symbol TEXT NOT NULL,
+        interval TEXT NOT NULL,
+        signal_type TEXT NOT NULL,
+        datetime TEXT NOT NULL,
+        price REAL NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS agents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        api_key TEXT UNIQUE NOT NULL,
+        notify_enabled INTEGER DEFAULT 0,
+        notify_type TEXT DEFAULT 'none',
+        webhook_url TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent_id INTEGER NOT NULL,
+        symbol TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (agent_id) REFERENCES agents(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS comment_likes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        comment_id INTEGER NOT NULL,
+        agent_id INTEGER NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (comment_id) REFERENCES comments(id),
+        FOREIGN KEY (agent_id) REFERENCES agents(id),
+        UNIQUE(comment_id, agent_id)
+      );
+    `;
+    await this.client.execute(createTableSql);
+  }
+
+  async run(sql: string, params: any[] = []): Promise<{ lastRowId?: number; changes?: number }> {
+    const result = await this.client.execute({ sql, args: params });
+    return { lastRowId: result.lastInsertRowid, changes: result.rowsAffected };
+  }
+
+  async all(sql: string, params: any[] = []): Promise<any[]> {
+    const result = await this.client.execute({ sql, args: params });
+    return result.rows;
+  }
+
+  async get(sql: string, params: any[] = []): Promise<any | undefined> {
+    const result = await this.client.execute({ sql, args: params });
+    return result.rows[0] || undefined;
+  }
+}
+
 // Global database wrapper
 let dbWrapper: DbWrapper | null = null;
 let dbInitialized = false;
@@ -141,9 +267,25 @@ let dbInitialized = false;
 export async function initDatabase(): Promise<void> {
   if (dbInitialized) return;
 
-  // Local environment - use better-sqlite3
-  const localDbInstance = await initLocalDatabase();
-  dbWrapper = new LocalDbWrapper(localDbInstance);
+  // Check if running in Cloudflare Workers (has D1 DB)
+  const d1Db = getD1Db();
+  if (d1Db) {
+    // Use D1 database for Workers
+    dbWrapper = new D1DbWrapper(d1Db);
+    await dbWrapper.init();
+  } else if (TURSO_URL && TURSO_AUTH_TOKEN) {
+    // Use Turso database for Vercel
+    const client = createClient({
+      url: TURSO_URL,
+      authToken: TURSO_AUTH_TOKEN
+    });
+    dbWrapper = new TursoDbWrapper(client);
+    await dbWrapper.init();
+  } else {
+    // Local environment - use better-sqlite3
+    const localDbInstance = await initLocalDatabase();
+    dbWrapper = new LocalDbWrapper(localDbInstance);
+  }
 
   dbInitialized = true;
 }
@@ -214,8 +356,8 @@ export async function insertSignal(signal: Omit<Signal, 'id'>): Promise<void> {
     [signal.symbol, signal.interval, signal.signal_type, signal.datetime, signal.price]
   );
 
-  if (false) { // Removed: 
-    saveLocalDatabase();
+  if (false) {
+    // This block is intentionally empty - saveLocalDatabase was removed
   }
 }
 
@@ -254,8 +396,8 @@ export async function clearAllSignals(): Promise<void> {
 
   await dbWrapper.run('DELETE FROM signals');
 
-  if (false) { // Removed: 
-    saveLocalDatabase();
+  if (false) {
+    // This block is intentionally empty - saveLocalDatabase was removed
   }
 }
 
@@ -295,8 +437,8 @@ export async function registerAgent(name: string, apiKey: string): Promise<Agent
     [name, apiKey]
   );
 
-  if (false) { // Removed: 
-    saveLocalDatabase();
+  if (false) {
+    // placeholder
   }
 
   return {
@@ -342,8 +484,8 @@ export async function updateAgentNotifyConfig(id: number, notifyEnabled: number,
     [notifyEnabled, notifyType, webhookUrl, id]
   );
 
-  if (false) { // Removed: 
-    saveLocalDatabase();
+  if (false) {
+    // This block is intentionally empty - saveLocalDatabase was removed
   }
 }
 
@@ -358,8 +500,8 @@ export async function insertComment(agentId: number, symbol: string, content: st
     [agentId, symbol, content]
   );
 
-  if (false) { // Removed: 
-    saveLocalDatabase();
+  if (false) {
+    // placeholder
   }
 
   return {
@@ -406,8 +548,8 @@ export async function toggleCommentLike(commentId: number, agentId: number): Pro
     await dbWrapper.run('INSERT INTO comment_likes (comment_id, agent_id) VALUES (?, ?)', [commentId, agentId]);
   }
 
-  if (false) { // Removed: 
-    saveLocalDatabase();
+  if (false) {
+    // placeholder
   }
 
   return !existing;

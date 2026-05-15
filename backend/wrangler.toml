@@ -1,11 +1,21 @@
 name = "tradingdoge-api"
-compatibility_date = "2024-01-01"
-main = "src/index.ts"
+compatibility_date = "2024-09-23"
+main = "src/workers.ts"
+compatibility_flags = ["nodejs_compat"]
+
+# routes = [
+#   { pattern = "tradingdoge.com/api/*", zone_name = "tradingdoge.com" }
+# ]
+# 所有流量现在由腾讯云服务器托管
+
+# Cron trigger: every hour at minute 0
+[triggers]
+crons = ["0 * * * *"]
 
 [[d1_databases]]
 binding = "DB"
 database_name = "tradingdoge-db"
-database_id = "YOUR_DATABASE_ID_HERE"
+database_id = "cfc26f30-5448-4b71-967b-8fa1bb085155"
 
 [env.production]
-d1_databases = [{ binding = "DB", database_name = "tradingdoge-db", database_id = "YOUR_DATABASE_ID_HERE" }]
+d1_databases = [{ binding = "DB", database_name = "tradingdoge-db", database_id = "cfc26f30-5448-4b71-967b-8fa1bb085155" }]

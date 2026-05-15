@@ -26,7 +26,32 @@
       "Bash(npx tsx:*)",
       "Bash(gh auth:*)",
       "Bash(netsh winhttp:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(nslookup:*)",
+      "Bash(npx wrangler:*)",
+      "Bash(cmd:*)",
+      "Bash(claude:*)",
+      "Bash(CLAUDECODE= claude:*)",
+      "Bash(npx vercel:*)",
+      "Bash(do:*)",
+      "Bash(npx sqlite3:*)",
+      "Bash(vercel deploy:*)",
+      "Bash(vercel list:*)",
+      "Bash(vercel logs:*)",
+      "Bash(ssh:*)",
+      "Bash(sshpass:*)",
+      "Bash(choco install:*)",
+      "Bash(export:*)",
+      "Bash(gh secret:*)",
+      "Bash(gh run:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh workflow:*)",
+      "Bash(gh api:*)",
+      "Bash(ssh-keygen:*)",
+      "Bash(chmod +x:*)",
+      "Bash(scp:*)",
+      "Bash(chmod 600:*)",
+      "Bash(chmod 400:*)"
     ]
   }
 }
