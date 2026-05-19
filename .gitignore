@@ -31,3 +31,5 @@ frontend/wrangler.toml
 test.js
 tsconfig.json
 vercel.json
+.claude/server-info.json
+tradingdoge-desktop/
