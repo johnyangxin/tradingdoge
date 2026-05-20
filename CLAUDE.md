@@ -11,6 +11,21 @@ TradingDoge - Stock display web application with TradingView charts and moving a
 - UVIX - Invesco NASDAQ 100 Low Volatility ETN
 - GLD - SPDR Gold Shares
 
+## 数据获取
+
+数据获取在腾讯云服务器上通过 cron job 定时执行，不依赖 Vercel。
+
+```bash
+# 手动触发数据获取（在服务器上执行）
+ssh ... "cd /var/www/tradingdoge/backend && npm run fetch:local"
+```
+
+定时任务配置在 `/etc/crontab`：
+- 每天 23:00 UTC (19:00 ET)
+- 每天 01:00 UTC (21:00 ET)
+
+日志文件：`/var/log/tradingdoge-fetch.log`
+
 ## Custom Skills
 
 - /fetch-data: 获取股票数据
