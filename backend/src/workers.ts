@@ -133,16 +133,16 @@ export default {
         // Get latest datetime from database for incremental update
         const latest = await getLatestDatetime(symbol as string, interval as string);
         if (latest) {
-          // Fetch from the day after latest data
+          // Fetch from the day AFTER latest data (not before!)
           const latestDate = new Date(latest.split(' ')[0]);
-          latestDate.setDate(latestDate.getDate() - 1);
+          latestDate.setDate(latestDate.getDate() + 1);
           startDate = latestDate.toISOString().split('T')[0];
           console.log(`Incremental fetch ${symbol} ${interval} since ${startDate} (latest: ${latest})`);
         } else {
-          // No data yet, fetch 7 days
-          const sevenDaysAgo = new Date();
-          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          startDate = sevenDaysAgo.toISOString().split('T')[0];
+          // No data yet, fetch 60 days to ensure enough data for MA calculation
+          const sixtyDaysAgo = new Date();
+          sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+          startDate = sixtyDaysAgo.toISOString().split('T')[0];
           console.log(`Full fetch ${symbol} ${interval} since ${startDate} (no existing data)`);
         }
       } else {
