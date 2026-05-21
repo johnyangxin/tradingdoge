@@ -33,3 +33,7 @@ tsconfig.json
 vercel.json
 .claude/server-info.json
 tradingdoge-desktop/
+
+.dev.vars*
+!.dev.vars.example
+!.env.example
