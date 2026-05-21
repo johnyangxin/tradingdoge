@@ -379,7 +379,9 @@ export async function getSignals(symbol: string, days: number = 30): Promise<Sig
 
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - days);
-  const cutoffStr = cutoffDate.toISOString();
+  // Use date-only string to avoid format mismatch: stored datetimes use space separator
+  // e.g. "2026-05-11 14:00:00" vs ISO "2026-05-11T..." — space < T in ASCII
+  const cutoffStr = cutoffDate.toISOString().split('T')[0];
 
   return await dbWrapper.all(
     'SELECT * FROM signals WHERE symbol = ? AND datetime >= ? ORDER BY datetime DESC',

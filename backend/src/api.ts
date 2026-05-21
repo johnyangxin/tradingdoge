@@ -57,13 +57,16 @@ router.get('/signals-daily/:symbol', async (req: Request, res: Response) => {
   const signalMap: Record<string, Record<string, 'B' | 'S' | '-'>> = {};
 
   // Only populate dates with signals
+  // signals are ordered DESC (most recent first); only set if not yet assigned
   for (const sig of signals) {
     const dateStr = sig.datetime.split(' ')[0].split('T')[0];
     if (intervals.includes(sig.interval)) {
       if (!signalMap[dateStr]) {
         signalMap[dateStr] = { '1h': '-', '2h': '-', '4h': '-', '1day': '-' };
       }
-      signalMap[dateStr][sig.interval] = sig.signal_type as 'B' | 'S';
+      if (signalMap[dateStr][sig.interval] === '-') {
+        signalMap[dateStr][sig.interval] = sig.signal_type as 'B' | 'S';
+      }
     }
   }
 
