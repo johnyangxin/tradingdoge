@@ -51,7 +51,18 @@
       "Bash(chmod +x:*)",
       "Bash(scp:*)",
       "Bash(chmod 600:*)",
-      "Bash(chmod 400:*)"
+      "Bash(chmod 400:*)",
+      "Bash(npx claude-mem:*)",
+      "Bash(npm create:*)",
+      "Bash(rustc:*)",
+      "Bash(printf tradingdoge-desktop\\\\n:*)",
+      "Bash(cp:*)",
+      "Bash(mkdir:*)",
+      "Bash(ln:*)",
+      "Bash(npx electron-builder:*)",
+      "Bash(ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ npm run:*)",
+      "Bash(handle:*)",
+      "WebFetch(domain:tradingdoge.com)"
     ]
   }
 }

@@ -70,7 +70,8 @@ function initTables(db: any) {
       interval TEXT NOT NULL,
       signal_type TEXT NOT NULL,
       datetime TEXT NOT NULL,
-      price REAL NOT NULL
+      price REAL NOT NULL,
+      UNIQUE(symbol, interval, datetime)
     );
 
     CREATE TABLE IF NOT EXISTS agents (
@@ -208,7 +209,8 @@ class TursoDbWrapper implements DbWrapper {
         interval TEXT NOT NULL,
         signal_type TEXT NOT NULL,
         datetime TEXT NOT NULL,
-        price REAL NOT NULL
+        price REAL NOT NULL,
+        UNIQUE(symbol, interval, datetime)
       );
 
       CREATE TABLE IF NOT EXISTS agents (
@@ -363,7 +365,8 @@ export async function insertSignal(signal: Omit<Signal, 'id'>): Promise<void> {
   if (!dbWrapper) return;
 
   await dbWrapper.run(
-    'INSERT INTO signals (symbol, interval, signal_type, datetime, price) VALUES (?, ?, ?, ?, ?)',
+    `INSERT INTO signals (symbol, interval, signal_type, datetime, price) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(symbol, interval, datetime) DO UPDATE SET signal_type = excluded.signal_type, price = excluded.price`,
     [signal.symbol, signal.interval, signal.signal_type, signal.datetime, signal.price]
   );
 
