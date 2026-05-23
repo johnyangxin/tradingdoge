@@ -36,7 +36,7 @@ async function main() {
       const data = await fetchTimeSeries(symbol as any, interval as Interval, 400, startDate);
 
       if (data.length > 0) {
-        upsertStockData(symbol as any, interval as Interval, data);
+        await upsertStockData(symbol as any, interval as Interval, data);
         console.log(`Saved ${data.length} records`);
 
         // 处理信号
