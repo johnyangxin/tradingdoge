@@ -122,12 +122,12 @@ export async function manualFetch() {
       if (data.length > 0) {
         await upsertStockData(symbol as any, interval as Interval, data);
         console.log(`Saved ${data.length} records`);
-
-        // 处理信号
-        await processStockData(symbol as any, interval as string);
       } else {
         console.log(`No new data for ${symbol} ${interval}`);
       }
+
+      // 不管有没有新数据，都重新计算信号
+      await processStockData(symbol as any, interval as string);
 
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
