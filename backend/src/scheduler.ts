@@ -57,7 +57,7 @@ export function startScheduler() {
   console.log('Scheduler started - fetch at 19:00 ET, validate at 21:00 ET Mon-Fri');
 
   // 19:00 - 主数据获取
-  cron.schedule('0 19 * * 1-5', async () => {
+  cron.schedule('0 19 * * *', async () => {
     console.log('Running scheduled data fetch at 19:00 ET...');
 
     try {
@@ -91,7 +91,7 @@ export function startScheduler() {
   });
 
   // 21:00 - 校验并补全数据
-  cron.schedule('0 21 * * 1-5', async () => {
+  cron.schedule('0 21 * * *', async () => {
     console.log('Running validation at 21:00 ET...');
 
     try {
