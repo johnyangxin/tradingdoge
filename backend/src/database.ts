@@ -103,6 +103,43 @@ function initTables(db: any) {
       UNIQUE(comment_id, agent_id)
     );
 
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      username TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS verification_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL,
+      code TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS user_favorites (
+      user_id INTEGER NOT NULL,
+      symbol TEXT NOT NULL,
+      PRIMARY KEY (user_id, symbol),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS user_alerts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      symbol TEXT NOT NULL,
+      alert_type TEXT NOT NULL,
+      price REAL NOT NULL,
+      entry_price REAL,
+      stop_loss REAL,
+      take_profit REAL,
+      atr REAL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_stock_data_symbol_interval ON stock_data(symbol, interval);
     CREATE INDEX IF NOT EXISTS idx_signals_symbol_interval ON signals(symbol, interval);
     CREATE INDEX IF NOT EXISTS idx_comments_symbol ON comments(symbol);
@@ -241,6 +278,29 @@ class TursoDbWrapper implements DbWrapper {
         FOREIGN KEY (agent_id) REFERENCES agents(id),
         UNIQUE(comment_id, agent_id)
       );
+
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        username TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS verification_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL,
+        code TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        used INTEGER DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS user_favorites (
+        user_id INTEGER NOT NULL,
+        symbol TEXT NOT NULL,
+        PRIMARY KEY (user_id, symbol),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
     `;
     await this.client.execute(createTableSql);
   }
@@ -376,19 +436,17 @@ export async function insertSignal(signal: Omit<Signal, 'id'>): Promise<void> {
 }
 
 // Get signals
-export async function getSignals(symbol: string, days: number = 30): Promise<Signal[]> {
+export async function getSignals(symbol: string, interval: string = '1h', days: number = 30): Promise<Signal[]> {
   await initDatabase();
   if (!dbWrapper) return [];
 
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - days);
-  // Use date-only string to avoid format mismatch: stored datetimes use space separator
-  // e.g. "2026-05-11 14:00:00" vs ISO "2026-05-11T..." — space < T in ASCII
   const cutoffStr = cutoffDate.toISOString().split('T')[0];
 
   return await dbWrapper.all(
-    'SELECT * FROM signals WHERE symbol = ? AND datetime >= ? ORDER BY datetime DESC',
-    [symbol, cutoffStr]
+    'SELECT * FROM signals WHERE symbol = ? AND interval = ? AND datetime >= ? ORDER BY datetime DESC',
+    [symbol, interval, cutoffStr]
   );
 }
 
@@ -593,6 +651,186 @@ export async function getCommentLikeStatus(commentId: number, agentId: number): 
   );
 
   return !!result;
+}
+
+// ============ User Functions ============
+
+export interface User {
+  id: number;
+  email: string;
+  password_hash: string;
+  username: string | null;
+  created_at: string;
+}
+
+export async function createUser(email: string, passwordHash: string): Promise<User> {
+  await initDatabase();
+  if (!dbWrapper) throw new Error('Database not initialized');
+
+  const result = await dbWrapper.run(
+    'INSERT INTO users (email, password_hash) VALUES (?, ?)',
+    [email, passwordHash]
+  );
+
+  return {
+    id: result.lastRowId as number,
+    email,
+    password_hash: passwordHash,
+    username: null,
+    created_at: new Date().toISOString()
+  };
+}
+
+export async function getUserByEmail(email: string): Promise<User | null> {
+  await initDatabase();
+  if (!dbWrapper) return null;
+
+  const user = await dbWrapper.get('SELECT * FROM users WHERE email = ?', [email]);
+  return user || null;
+}
+
+export async function getUserById(id: number): Promise<User | null> {
+  await initDatabase();
+  if (!dbWrapper) return null;
+
+  const user = await dbWrapper.get('SELECT * FROM users WHERE id = ?', [id]);
+  return user || null;
+}
+
+export async function saveVerificationCode(email: string, code: string, expiresAt: Date): Promise<void> {
+  await initDatabase();
+  if (!dbWrapper) return;
+
+  const expiresAtStr = expiresAt.toISOString();
+
+  // Delete any existing unused codes for this email
+  await dbWrapper.run('DELETE FROM verification_codes WHERE email = ? AND used = 0', [email]);
+
+  // Insert new code
+  await dbWrapper.run(
+    'INSERT INTO verification_codes (email, code, expires_at) VALUES (?, ?, ?)',
+    [email, code, expiresAtStr]
+  );
+}
+
+export async function verifyCode(email: string, code: string): Promise<boolean> {
+  await initDatabase();
+  if (!dbWrapper) return false;
+
+  const result = await dbWrapper.get(
+    'SELECT 1 FROM verification_codes WHERE email = ? AND code = ? AND used = 0 AND expires_at > datetime(\'now\')',
+    [email, code]
+  );
+
+  if (result) {
+    // Mark code as used
+    await dbWrapper.run(
+      'UPDATE verification_codes SET used = 1 WHERE email = ? AND code = ?',
+      [email, code]
+    );
+  }
+
+  return !!result;
+}
+
+// ============ User Favorites Functions ============
+
+export async function addUserFavorite(userId: number, symbol: string): Promise<void> {
+  await initDatabase();
+  if (!dbWrapper) return;
+
+  await dbWrapper.run(
+    'INSERT OR IGNORE INTO user_favorites (user_id, symbol) VALUES (?, ?)',
+    [userId, symbol]
+  );
+}
+
+export async function removeUserFavorite(userId: number, symbol: string): Promise<void> {
+  await initDatabase();
+  if (!dbWrapper) return;
+
+  await dbWrapper.run(
+    'DELETE FROM user_favorites WHERE user_id = ? AND symbol = ?',
+    [userId, symbol]
+  );
+}
+
+export async function getUserFavorites(userId: number): Promise<string[]> {
+  await initDatabase();
+  if (!dbWrapper) return [];
+
+  const rows = await dbWrapper.all(
+    'SELECT symbol FROM user_favorites WHERE user_id = ? ORDER BY symbol',
+    [userId]
+  );
+
+  return rows.map(r => r.symbol);
+}
+
+// Save user alert with price action levels
+export async function saveUserAlert(
+  userId: number,
+  symbol: string,
+  alertType: 'B' | 'S',
+  price: number,
+  entryPrice?: number,
+  stopLoss?: number,
+  takeProfit?: number,
+  atr?: number
+): Promise<void> {
+  await initDatabase();
+  if (!dbWrapper) return;
+
+  await dbWrapper.run(
+    'INSERT INTO user_alerts (user_id, symbol, alert_type, price, entry_price, stop_loss, take_profit, atr) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [userId, symbol, alertType, price, entryPrice ?? null, stopLoss ?? null, takeProfit ?? null, atr ?? null]
+  );
+}
+
+// Get user alerts with price action levels
+export async function getUserAlerts(userId: number, limit: number = 20): Promise<{
+  id: number;
+  symbol: string;
+  alert_type: string;
+  price: number;
+  entry_price: number | null;
+  stop_loss: number | null;
+  take_profit: number | null;
+  atr: number | null;
+  created_at: string;
+}[]> {
+  await initDatabase();
+  if (!dbWrapper) return [];
+
+  const rows = await dbWrapper.all(
+    'SELECT id, symbol, alert_type, price, entry_price, stop_loss, take_profit, atr, created_at FROM user_alerts WHERE user_id = ? ORDER BY created_at DESC LIMIT ?',
+    [userId, limit]
+  );
+
+  return rows;
+}
+
+// Check if alert was sent today for symbol and type
+export async function hasAlertToday(userId: number, symbol: string, alertType: 'B' | 'S'): Promise<boolean> {
+  await initDatabase();
+  if (!dbWrapper) return false;
+
+  const today = new Date().toISOString().split('T')[0];
+  const result = await dbWrapper.get(
+    'SELECT 1 FROM user_alerts WHERE user_id = ? AND symbol = ? AND alert_type = ? AND date(created_at) = ?',
+    [userId, symbol, alertType, today]
+  );
+
+  return !!result;
+}
+
+// Get all users with favorites
+export async function getAllUsersWithFavorites(): Promise<{ userId: number; symbol: string }[]> {
+  await initDatabase();
+  if (!dbWrapper) return [];
+
+  const rows = await dbWrapper.all('SELECT user_id, symbol FROM user_favorites');
+  return rows.map(r => ({ userId: r.user_id, symbol: r.symbol }));
 }
 
 // Export for testing

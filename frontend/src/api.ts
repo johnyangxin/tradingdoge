@@ -40,8 +40,8 @@ export async function fetchStockData(symbol: string, interval: string = '1day'):
   return res.json();
 }
 
-export async function fetchSignals(symbol: string, days: number = 30): Promise<{ symbol: string; days: number; signals: Signal[] }> {
-  const res = await fetch(`${API_BASE}/signals/${symbol}?days=${days}`);
+export async function fetchSignals(symbol: string, interval: string = '1h', days: number = 30): Promise<{ symbol: string; days: number; signals: Signal[] }> {
+  const res = await fetch(`${API_BASE}/signals/${symbol}?interval=${interval}&days=${days}`);
   return res.json();
 }
 
@@ -70,6 +70,65 @@ export interface SignalsSummary {
 
 export async function fetchSignalsSummary(): Promise<SignalsSummary> {
   const res = await fetch(`${API_BASE}/signals-summary`);
+  return res.json();
+}
+
+// ============ Favorites API ============
+
+export async function fetchFavorites(apiKey?: string): Promise<{ favorites: { symbol: string }[] }> {
+  const headers: Record<string, string> = {};
+  if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+  const res = await fetch(`${API_BASE}/user/favorites`, { headers });
+  return res.json();
+}
+
+export async function addFavorite(symbol: string, apiKey?: string): Promise<{ success: boolean }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+  const res = await fetch(`${API_BASE}/user/favorites`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ symbol })
+  });
+  return res.json();
+}
+
+export async function removeFavorite(symbol: string, apiKey?: string): Promise<{ success: boolean }> {
+  const headers: Record<string, string> = {};
+  if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+  const res = await fetch(`${API_BASE}/user/favorites/${encodeURIComponent(symbol)}`, {
+    method: 'DELETE',
+    headers
+  });
+  return res.json();
+}
+
+export interface Alert {
+  id: number;
+  symbol: string;
+  alert_type: string;
+  price: number;
+  entry_price: number | null;
+  stop_loss: number | null;
+  take_profit: number | null;
+  atr: number | null;
+  created_at: string;
+}
+
+export async function getAlerts(apiKey?: string): Promise<{ alerts: Alert[] }> {
+  const headers: Record<string, string> = {};
+  if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+  const res = await fetch(`${API_BASE}/user/alerts`, { headers });
+  return res.json();
+}
+
+export async function checkAlerts(apiKey?: string): Promise<{ success: boolean; alertsAdded: number }> {
+  const headers: Record<string, string> = {};
+  if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+  const res = await fetch(`${API_BASE}/user/check-alerts`, {
+    method: 'POST',
+    headers
+  });
   return res.json();
 }
 

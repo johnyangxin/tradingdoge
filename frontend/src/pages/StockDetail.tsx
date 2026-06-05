@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchStockData, fetchDailySignals, OHLCV, Interval, INTERVALS, DailySignal } from '../api';
 import StockChart from '../components/Chart';
-import { CommentSection } from '../components/CommentSection';
+import { FavoriteButton } from '../components/FavoriteButton';
 import './StockDetail.css';
 
 export const StockDetail: React.FC = () => {
@@ -108,7 +108,7 @@ export const StockDetail: React.FC = () => {
         </div>
 
         <div className="detail-sidebar">
-          <CommentSection symbol={symbol!} />
+          <FavoriteButton symbol={symbol!} />
         </div>
       </div>
     </div>

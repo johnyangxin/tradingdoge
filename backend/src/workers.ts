@@ -48,10 +48,11 @@ export default {
       const signalsMatch = path.match(/^\/api\/signals\/([^/]+)$/);
       if (signalsMatch && method === 'GET') {
         let symbol = decodeURIComponent(signalsMatch[1]).replace('BTC-USD', 'BTC/USD');
+        const interval = url.searchParams.get('interval') || '1h';
         const days = parseInt(url.searchParams.get('days') || '30');
         const { getSignals } = await import('./database');
-        const signals = await getSignals(symbol, days);
-        return jsonResponse({ symbol, days, signals });
+        const signals = await getSignals(symbol, interval, days);
+        return jsonResponse({ symbol, interval, days, signals });
       }
 
       const signalsDailyMatch = path.match(/^\/api\/signals-daily\/([^/]+)$/);
@@ -59,7 +60,7 @@ export default {
         let symbol = decodeURIComponent(signalsDailyMatch[1]).replace('BTC-USD', 'BTC/USD');
         const days = 10;
         const { getSignals } = await import('./database');
-        const signals = await getSignals(symbol, days);
+        const signals = await getSignals(symbol, '1h', days);
         const intervals = ['1h', '2h', '4h', '1day'];
 
         const signalMap: Record<string, Record<string, 'B' | 'S' | '-'>> = {};

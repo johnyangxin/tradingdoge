@@ -3,7 +3,7 @@ import { SYMBOLS, Interval } from './types';
 import { getStockData, getSignals, initDatabase, clearAllSignals, registerAgent, getAgentByApiKey, getAgentById, getAgentList, updateAgentNotifyConfig, insertComment, getCommentsBySymbol, getCommentsByAgent, toggleCommentLike, getCommentLikeCount, getCommentLikeStatus, getLatestSignals } from './database';
 import { getCandlesWithMA, CandleWithMA } from './signals';
 import { manualFetch, validateAndFetchIncomplete } from './scheduler';
-import { notifyNewComment } from './notifier';
+import { notifyNewComment, notifyUseralert } from './notifier';
 import crypto from 'crypto';
 
 const router = express.Router();
@@ -45,22 +45,24 @@ router.get('/signals-daily/:symbol', async (req: Request, res: Response) => {
   let symbol = decodeURIComponent(req.params.symbol);
   symbol = symbol.replace('BTC-USD', 'BTC/USD');
   const days = 10;
+  const intervals = ['1h', '2h', '4h', '1day'];
 
   if (!SYMBOLS.includes(symbol as any)) {
     return res.status(400).json({ error: 'Invalid symbol' });
   }
 
-  const signals = await getSignals(symbol, days);
-  const intervals = ['1h', '2h', '4h', '1day'];
+  // Fetch signals for all intervals in parallel
+  const allSignals = await Promise.all(
+    intervals.map(int => getSignals(symbol, int, days))
+  );
 
   // Build date to signal mapping
   const signalMap: Record<string, Record<string, 'B' | 'S' | '-'>> = {};
 
-  // Only populate dates with signals
-  // signals are ordered DESC (most recent first); only set if not yet assigned
-  for (const sig of signals) {
-    const dateStr = sig.datetime.split(' ')[0].split('T')[0];
-    if (intervals.includes(sig.interval)) {
+  // Process all signals
+  for (const signals of allSignals) {
+    for (const sig of signals) {
+      const dateStr = sig.datetime.split(' ')[0].split('T')[0];
       if (!signalMap[dateStr]) {
         signalMap[dateStr] = { '1h': '-', '2h': '-', '4h': '-', '1day': '-' };
       }
@@ -83,14 +85,15 @@ router.get('/signals-daily/:symbol', async (req: Request, res: Response) => {
 router.get('/signals/:symbol', async (req: Request, res: Response) => {
   let symbol = decodeURIComponent(req.params.symbol);
   symbol = symbol.replace('BTC-USD', 'BTC/USD');
+  const interval = (req.query.interval as string) || '1h';
   const days = parseInt(req.query.days as string) || 30;
 
   if (!SYMBOLS.includes(symbol as any)) {
     return res.status(400).json({ error: 'Invalid symbol' });
   }
 
-  const signals = await getSignals(symbol, days);
-  res.json({ symbol, days, signals });
+  const signals = await getSignals(symbol, interval, days);
+  res.json({ symbol, interval, days, signals });
 });
 
 // Manually trigger data fetch
@@ -267,5 +270,169 @@ router.post('/comments/:id/like', authenticateAgent, async (req: Request, res: R
 
   res.json({ success: true, liked, like_count: likeCount });
 });
+
+// ============ Auth Routes ============
+import { sendVerificationCode, registerWithCode, login, verifyToken } from './auth';
+import { getUserById, getUserFavorites, addUserFavorite, removeUserFavorite, getUserAlerts, hasAlertToday, getAllUsersWithFavorites } from './database';
+
+// Send verification code
+router.post('/auth/send-code', async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ message: 'Valid email required' });
+  }
+
+  const result = await sendVerificationCode(email);
+  res.json(result);
+});
+
+// Register
+router.post('/auth/register', async (req: Request, res: Response) => {
+  const { email, code, password } = req.body;
+
+  if (!email || !code || !password) {
+    return res.status(400).json({ message: 'Email, code, and password required' });
+  }
+
+  const result = await registerWithCode(email, code, password);
+  res.json(result);
+});
+
+// Login
+router.post('/auth/login', async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password required' });
+  }
+
+  const result = await login(email, password);
+  res.json(result);
+});
+
+// Auth middleware
+function authenticateUser(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Authorization required' });
+  }
+
+  const token = authHeader.slice(7);
+  const userPayload = verifyToken(token);
+
+  if (!userPayload) {
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+
+  (req as any).user = userPayload;
+  next();
+}
+
+// Get current user
+router.get('/auth/me', authenticateUser, async (req: Request, res: Response) => {
+  const userPayload = (req as any).user;
+  const user = await getUserById(userPayload.id);
+
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  res.json({ id: user.id, email: user.email, username: user.username });
+});
+
+// Get user favorites
+router.get('/user/favorites', authenticateUser, async (req: Request, res: Response) => {
+  const userPayload = (req as any).user;
+  const favorites = await getUserFavorites(userPayload.id);
+
+  res.json({ favorites });
+});
+
+// Add favorite
+router.post('/user/favorites', authenticateUser, async (req: Request, res: Response) => {
+  const userPayload = (req as any).user;
+  const { symbol } = req.body;
+
+  if (!symbol) {
+    return res.status(400).json({ message: 'Symbol required' });
+  }
+
+  await addUserFavorite(userPayload.id, symbol);
+  res.json({ success: true });
+});
+
+// Remove favorite
+router.delete('/user/favorites/:symbol', authenticateUser, async (req: Request, res: Response) => {
+  const userPayload = (req as any).user;
+  const symbol = decodeURIComponent(req.params.symbol);
+
+  await removeUserFavorite(userPayload.id, symbol);
+  res.json({ success: true });
+});
+
+// Get user alerts
+router.get('/user/alerts', authenticateUser, async (req: Request, res: Response) => {
+  const userPayload = (req as any).user;
+  const alerts = await getUserAlerts(userPayload.id);
+  res.json({ alerts });
+});
+
+// Check alerts for user's favorites (manual trigger)
+router.post('/user/check-alerts', authenticateUser, async (req: Request, res: Response) => {
+  const userPayload = (req as any).user;
+  const userId = userPayload.id;
+
+  // 获取用户收藏的股票
+  const favorites = await getUserFavorites(userId);
+
+  if (favorites.length === 0) {
+    res.json({ success: true, alertsAdded: 0 });
+    return;
+  }
+
+  // 检查每只股票是否全 B 或全 S
+  let alertsAdded = 0;
+  for (const symbol of favorites) {
+    const signalType = await checkAllBSignal(symbol);
+    if (!signalType) continue;
+
+    // 检查今天是否已经发送过同类提醒
+    const hasAlert = await hasAlertToday(userId, symbol, signalType);
+    if (hasAlert) continue;
+
+    // 获取当前价格
+    const data = await getStockData(symbol, '1day', 1);
+    const price = data.length > 0 ? data[data.length - 1].close : 0;
+
+    // 发送通知并保存记录
+    await notifyUseralert(userId, symbol, signalType, price);
+    alertsAdded++;
+  }
+
+  res.json({ success: true, alertsAdded });
+});
+
+// 检查单只股票是否全 B 或全 S，返回信号类型或 null
+async function checkAllBSignal(symbol: string): Promise<'B' | 'S' | null> {
+  const intervals = ['1h', '2h', '4h', '1day'];
+  const latestSignals: string[] = [];
+
+  for (const interval of intervals) {
+    const signals = await getSignals(symbol, interval, 3);
+    if (signals.length > 0) {
+      latestSignals.push(signals[0].signal_type);
+    }
+  }
+
+  if (latestSignals.length < 4) return null;
+
+  const allB = latestSignals.every(s => s === 'B');
+  const allS = latestSignals.every(s => s === 'S');
+
+  if (allB) return 'B';
+  if (allS) return 'S';
+  return null;
+}
 
 export default router;
