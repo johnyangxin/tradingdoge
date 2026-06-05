@@ -6,47 +6,44 @@ import { processStockData } from '../src/signals';
 
 dotenv.config();
 
-// 只获取这几个间隔（排除 1week 和 1month）
+// 只有这几个间隔（排除 1week 和 1month）
 const INTERVALS_TO_FETCH = INTERVALS.filter(i => i !== '1week' && i !== '1month');
+
+// Twelvedata 免费版每分钟 8 次请求，每支股票后等待
+const DELAY_BETWEEN_CALLS_MS = 60000;
 
 async function main() {
   console.log('Fetching stock data (incremental update)...');
 
-  // 增量更新 - 对于每个 symbol 和 interval，获取最新数据之后的新数据
   for (const symbol of SYMBOLS) {
     for (const interval of INTERVALS_TO_FETCH) {
       let startDate: string | undefined;
 
-      // 获取最新 datetime
       const latest = await getLatestDatetime(symbol as string, interval as string);
       if (latest) {
-        // 从最新数据的下一天开始获取
-        const latestDate = new Date(latest.split(' ')[0]);
-        latestDate.setDate(latestDate.getDate() + 1);
-        startDate = latestDate.toISOString().split('T')[0];
-        console.log(`Incremental fetch ${symbol} ${interval} since ${startDate} (latest: ${latest})`);
+        startDate = latest.split(' ')[0];
+        console.log(`[${symbol}/${interval}] Fetching since ${startDate} (latest: ${latest})`);
       } else {
-        // 首次获取，获取 60 天数据
         const sixtyDaysAgo = new Date();
         sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
         startDate = sixtyDaysAgo.toISOString().split('T')[0];
-        console.log(`Full fetch ${symbol} ${interval} since ${startDate} (no existing data)`);
+        console.log(`[${symbol}/${interval}] Full fetch since ${startDate}`);
       }
 
       const data = await fetchTimeSeries(symbol as any, interval as Interval, 400, startDate);
 
       if (data.length > 0) {
         await upsertStockData(symbol as any, interval as Interval, data);
-        console.log(`Saved ${data.length} records`);
+        console.log(`[${symbol}/${interval}] Saved ${data.length} records`);
       } else {
-        console.log(`No new data for ${symbol} ${interval}`);
+        console.log(`[${symbol}/${interval}] No new data`);
       }
 
-      // 不管有没有新数据，都重新计算信号（确保信号与最新数据同步）
       await processStockData(symbol as any, interval as string);
 
-      // 延迟避免 API 限流
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 每支股票后等待 60s（Twelvedata 免费版每分钟 8 次请求限制）
+      console.log(`Waiting ${DELAY_BETWEEN_CALLS_MS / 1000}s before next...`);
+      await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_CALLS_MS));
     }
   }
 

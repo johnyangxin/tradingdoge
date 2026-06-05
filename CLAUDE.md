@@ -30,6 +30,8 @@ ssh ... "cd /var/www/tradingdoge/backend && npm run fetch:local"
 
 - /fetch-data: 获取股票数据
 - /local-init: 启动本地开发环境（backend + frontend 同时运行）
+  - Backend: http://localhost:3004
+  - Frontend: http://localhost:5173
 - /server-deploy: 部署到腾讯云服务器
 
 ## Deploy Commands

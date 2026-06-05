@@ -29,18 +29,20 @@ export async function fetchTimeSeries(
         params.start_date = start_date;
       }
 
-      const response = await axios.get(BASE_URL, { params });
+      const response = await axios.get(BASE_URL, { params, validateStatus: () => true });
 
-      // 检查 API 错误响应
-      if (response.data.code === 400 || response.data.code === 403 || response.data.status === 'error') {
-        lastError = response.data.message || response.data.code || response.data.status;
+      // 检查 API 错误响应（HTTP 非 200 或 body 有错误）
+      const httpStatus = response.status;
+      const isHttpError = httpStatus !== 200;
+      const isApiError = response.data.code || response.data.status === 'error';
 
-        // 400/404 错误（日期不存在等），不需要重试
-        if (response.data.code === 400 || response.data.code === 404) {
-          if (lastError.includes('No data is available') || lastError.includes('Try setting different')) {
-            console.log(`[${symbol}/${interval}] No new data (date range invalid), skipping`);
-            return [];
-          }
+      if (isHttpError || isApiError) {
+        lastError = response.data.message || `HTTP ${httpStatus}`;
+
+        // 400 错误（日期不存在等），不需要重试
+        if (lastError.includes('No data is available') || lastError.includes('Try setting different')) {
+          console.log(`[${symbol}/${interval}] No new data (date range invalid), skipping`);
+          return [];
         }
 
         // 速率限制，等待后重试

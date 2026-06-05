@@ -30,7 +30,7 @@ export interface Stock {
 export const INTERVALS = ['1h', '2h', '4h', '1day', '1week', '1month'] as const;
 export type Interval = typeof INTERVALS[number];
 
-export const SYMBOLS = ['SPY', 'BTC/USD', 'UVIX', 'GLD'] as const;
+export const SYMBOLS = ['SPY', 'BTC/USD', 'UVIX', 'GLD', 'MSTR'] as const;
 export type Symbol = typeof SYMBOLS[number];
 
 // ============ Agent & Comment Types ============
