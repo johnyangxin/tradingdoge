@@ -31,7 +31,7 @@ export default {
       if (path === '/api/stocks' && method === 'GET') {
         const stocks = SYMBOLS.map(s => ({
           symbol: s,
-          name: s === 'SPY' ? 'S&P 500 ETF' : s === 'BTC/USD' ? 'Bitcoin' : s === 'UVIX' ? 'Invesco NASDAQ 100 Low Volatility ETN' : s === 'GLD' ? 'SPDR Gold Shares' : s === 'MSTR' ? 'MicroStrategy' : s
+          name: s === 'SPY' ? 'S&P 500 ETF' : s === 'BTC/USD' ? 'Bitcoin' : s === 'UVIX' ? 'Invesco NASDAQ 100 Low Volatility ETN' : s === 'GLD' ? 'SPDR Gold Shares' : s
         }));
         return jsonResponse(stocks);
       }
@@ -133,8 +133,10 @@ export default {
         // Get latest datetime from database for incremental update
         const latest = await getLatestDatetime(symbol as string, interval as string);
         if (latest) {
-          // 用最新数据的日期作为 start_date，Twelvedata 会自动去重
-          startDate = latest.split(' ')[0];
+          // Fetch from the day AFTER latest data (not before!)
+          const latestDate = new Date(latest.split(' ')[0]);
+          latestDate.setDate(latestDate.getDate() + 1);
+          startDate = latestDate.toISOString().split('T')[0];
           console.log(`Incremental fetch ${symbol} ${interval} since ${startDate} (latest: ${latest})`);
         } else {
           // No data yet, fetch 60 days to ensure enough data for MA calculation

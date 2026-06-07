@@ -62,7 +62,11 @@
       "Bash(npx electron-builder:*)",
       "Bash(ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ npm run:*)",
       "Bash(handle:*)",
-      "WebFetch(domain:tradingdoge.com)"
+      "WebFetch(domain:tradingdoge.com)",
+      "Bash(cd *)",
+      "Read(//c/Users/ccc/.ssh/**)",
+      "Bash(dir /b %USERPROFILE%\\\\.ssh\\\\tengxun*)",
+      "Bash(dir /b C:\\\\Users\\\\ccc\\\\.ssh\\\\tengxun*)"
     ]
   }
 }

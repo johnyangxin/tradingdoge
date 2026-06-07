@@ -40,15 +40,15 @@ export async function fetchTimeSeries(
         lastError = response.data.message || `HTTP ${httpStatus}`;
 
         // 400 错误（日期不存在等），不需要重试
-        if (lastError.includes('No data is available') || lastError.includes('Try setting different')) {
+        if (httpStatus === 400 || lastError.includes('No data is available') || lastError.includes('Try setting different')) {
           console.log(`[${symbol}/${interval}] No new data (date range invalid), skipping`);
           return [];
         }
 
-        // 速率限制，等待后重试
-        if (lastError.includes('API credits')) {
+        // 速率限制（429 或 API credits），等待后重试
+        if (httpStatus === 429 || lastError.includes('API credits')) {
           const waitTime = Math.min(attempt * 30000, 120000); // 30s, 60s, 90s (max 2min)
-          console.log(`[${symbol}/${interval}] Rate limited, waiting ${waitTime/1000}s (attempt ${attempt}/${maxRetries})...`);
+          console.log(`[${symbol}/${interval}] Rate limited (${httpStatus}), waiting ${waitTime/1000}s (attempt ${attempt}/${maxRetries})...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
           continue;
         }
@@ -76,7 +76,15 @@ export async function fetchTimeSeries(
       lastError = error.message;
       console.error(`[${symbol}/${interval}] Error: ${lastError} (attempt ${attempt}/${maxRetries})`);
 
-      // 网络错误，等待后重试
+      // 网络错误或 429 速率限制，等待后重试
+      if (lastError.includes('429') || lastError.includes('ECONNREFUSED') || lastError.includes('ETIMEDOUT')) {
+        const waitTime = Math.min(attempt * 30000, 120000);
+        console.log(`[${symbol}/${interval}] Network/rate error, waiting ${waitTime/1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+
+      // 其他网络错误，等待后重试
       if (attempt < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
