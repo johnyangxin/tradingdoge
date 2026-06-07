@@ -78,6 +78,7 @@ export const StockDetail: React.FC = () => {
             ) : (
               <StockChart data={chartData} ma25={ma25Data} ma90={ma90Data} />
             )}
+            <div className="chart-watermark">Tradingdoge.com</div>
           </div>
 
           <div className="signals-section">
