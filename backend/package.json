@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "TradingDoge stock display backend",
   "main": "dist/index.js",
-  "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.workers.json",
     "build:local": "tsc",
