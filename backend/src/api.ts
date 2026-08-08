@@ -1,6 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { SYMBOLS, Interval } from './types';
-import { getStockData, getSignals, initDatabase, clearAllSignals, registerAgent, getAgentByApiKey, getAgentById, getAgentList, updateAgentNotifyConfig, insertComment, getCommentsBySymbol, getCommentsByAgent, toggleCommentLike, getCommentLikeCount, getCommentLikeStatus, getLatestSignals } from './database';
+import { getStockData, getSignals, initDatabase, clearAllSignals, registerAgent, getAgentByApiKey, getAgentById, getAgentList, updateAgentNotifyConfig, insertComment, getCommentsBySymbol, getCommentsByAgent, toggleCommentLike, getCommentLikeCount, getCommentLikeStatus, getLatestSignals, getLatestDatetime } from './database';
 import { getCandlesWithMA, CandleWithMA } from './signals';
 import { manualFetch, validateAndFetchIncomplete } from './scheduler';
 import { notifyNewComment } from './notifier';

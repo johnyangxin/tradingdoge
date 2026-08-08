@@ -116,63 +116,64 @@ export default {
   },
 
   // 本地手动触发（Vercel 负责定时抓取）
-  async function doManualFetch(symbolParam?: string | null, intervalParam?: string | null): Promise<void> {
-  const symbolsToFetch = symbolParam ? [symbolParam] : SYMBOLS;
-  const intervalsToFetch = intervalParam ? [intervalParam] : INTERVALS.filter(i => i !== '1week' && i !== '1month');
+  async doManualFetch(symbolParam?: string | null, intervalParam?: string | null): Promise<void> {
+    const symbolsToFetch = symbolParam ? [symbolParam] : SYMBOLS;
+    const intervalsToFetch = intervalParam ? [intervalParam] : INTERVALS.filter(i => i !== '1week' && i !== '1month');
 
-  // For scheduled fetch, use incremental update (get latest datetime from DB)
-  // For manual fetch with specific symbol, fetch more data to ensure we have latest
-  const useIncremental = !symbolParam;
+    // For scheduled fetch, use incremental update (get latest datetime from DB)
+    // For manual fetch with specific symbol, fetch more data to ensure we have latest
+    const useIncremental = !symbolParam;
 
-  // Process one symbol+interval at a time to avoid CPU limit
-  for (const symbol of symbolsToFetch) {
-    for (const interval of intervalsToFetch) {
-      let startDate: string | undefined;
+    // Process one symbol+interval at a time to avoid CPU limit
+    for (const symbol of symbolsToFetch) {
+      for (const interval of intervalsToFetch) {
+        let startDate: string | undefined;
 
-      if (useIncremental) {
-        // Get latest datetime from database for incremental update
-        const latest = await getLatestDatetime(symbol as string, interval as string);
-        if (latest) {
-          // Fetch from the day AFTER latest data (not before!)
-          const latestDate = new Date(latest.split(' ')[0]);
-          latestDate.setDate(latestDate.getDate() + 1);
-          startDate = latestDate.toISOString().split('T')[0];
-          console.log(`Incremental fetch ${symbol} ${interval} since ${startDate} (latest: ${latest})`);
+        if (useIncremental) {
+          // Get latest datetime from database for incremental update
+          const latest = await getLatestDatetime(symbol as string, interval as string);
+          if (latest) {
+            // Fetch from the day AFTER latest data (not before!)
+            const latestDate = new Date(latest.split(' ')[0]);
+            latestDate.setDate(latestDate.getDate() + 1);
+            startDate = latestDate.toISOString().split('T')[0];
+            console.log(`Incremental fetch ${symbol} ${interval} since ${startDate} (latest: ${latest})`);
+          } else {
+            // No data yet, fetch 60 days to ensure enough data for MA calculation
+            const sixtyDaysAgo = new Date();
+            sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+            startDate = sixtyDaysAgo.toISOString().split('T')[0];
+            console.log(`Full fetch ${symbol} ${interval} since ${startDate} (no existing data)`);
+          }
         } else {
-          // No data yet, fetch 60 days to ensure enough data for MA calculation
-          const sixtyDaysAgo = new Date();
-          sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-          startDate = sixtyDaysAgo.toISOString().split('T')[0];
-          console.log(`Full fetch ${symbol} ${interval} since ${startDate} (no existing data)`);
+          // Manual fetch - get 7 days to ensure we have latest
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          startDate = sevenDaysAgo.toISOString().split('T')[0];
+          console.log(`Manual fetch ${symbol} ${interval} since ${startDate}`);
         }
-      } else {
-        // Manual fetch - get 7 days to ensure we have latest
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        startDate = sevenDaysAgo.toISOString().split('T')[0];
-        console.log(`Manual fetch ${symbol} ${interval} since ${startDate}`);
+
+        const data = await fetchTimeSeries(symbol as any, interval as Interval, 400, startDate);
+
+        if (data.length > 0) {
+          await upsertStockData(symbol as any, interval as Interval, data);
+          console.log(`Saved ${data.length} records for ${symbol}/${interval}`);
+
+          await processStockData(symbol as any, interval as string);
+        } else {
+          console.log(`No new data for ${symbol} ${interval}`);
+        }
+
+        // Small delay between requests
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
-
-      const data = await fetchTimeSeries(symbol as any, interval as Interval, 400, startDate);
-
-      if (data.length > 0) {
-        await upsertStockData(symbol as any, interval as Interval, data);
-        console.log(`Saved ${data.length} records for ${symbol}/${interval}`);
-
-        await processStockData(symbol as any, interval as string);
-      } else {
-        console.log(`No new data for ${symbol} ${interval}`);
-      }
-
-      // Small delay between requests
-      await new Promise(resolve => setTimeout(resolve, 100));
     }
-  }
-}
+  },
 
-function jsonResponse(data: any, init?: ResponseInit): Response {
-  return new Response(JSON.stringify(data), {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...init?.headers }
-  });
+  jsonResponse(data: any, init?: ResponseInit): Response {
+    return new Response(JSON.stringify(data), {
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...init?.headers }
+    });
+  }
 }
