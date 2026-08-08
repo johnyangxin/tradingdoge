@@ -37,7 +37,7 @@ export async function validateAndFetchIncomplete() {
           results.push({ symbol, interval, status: 'no_data' });
         }
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 8000));
       }
     }
   }
@@ -68,7 +68,7 @@ export async function manualFetch() {
       // 不管有没有新数据，都重新计算信号
       await processStockData(symbol as any, interval as string);
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 8000));
     }
   }
 
