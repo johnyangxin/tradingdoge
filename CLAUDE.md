@@ -10,6 +10,8 @@ TradingDoge - Stock display web application with TradingView charts and moving a
 - BTC/USD - Bitcoin
 - UVIX - Invesco NASDAQ 100 Low Volatility ETN
 - GLD - SPDR Gold Shares
+- MSTR - MicroStrategy
+- SNDK, SPCX, SOXL, MU, SKHY, SOX, INTC, MRVL, NVDA, TSLA, GOOG, AMD, AVAX, COIN, META, AAPL, MSFT, ORCL, AMZN, HOOD
 
 ## 数据获取
 

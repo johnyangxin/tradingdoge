@@ -31,13 +31,9 @@ async function initLocalDatabase(): Promise<any> {
   if (localDb) return localDb;
 
   const Database = (await import('better-sqlite3')).default;
-  const { fileURLToPath } = await import('url');
-  const { dirname, join } = await import('path');
+  const { join } = await import('path');
 
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-
-  const dbPath = join(__dirname, '..', 'tradingdoge.db');
+  const dbPath = join(process.cwd(), 'tradingdoge.db');
 
   localDb = new Database(dbPath);
   localDb!.pragma('journal_mode = WAL');
